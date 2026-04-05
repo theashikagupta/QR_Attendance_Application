@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import api from '../../api/client';
 import QrScanner from '../../components/QrScanner';
+import QRDisplay from '../../components/QRDisplay';
 
 function TeacherAttendancePage() {
   const [profile, setProfile] = useState(null);
@@ -11,6 +12,7 @@ function TeacherAttendancePage() {
   const [error, setError] = useState('');
   const [scannerOpen, setScannerOpen] = useState(false);
   const [scanMessage, setScanMessage] = useState('');
+  const [sessionQrCode, setSessionQrCode] = useState(null);
 
   useEffect(() => {
     const loadProfile = async () => {
@@ -33,12 +35,19 @@ function TeacherAttendancePage() {
     setStudents([]);
     setScanMessage('');
     setScannerOpen(false);
+    setSessionQrCode(null);
+    
     setLoading(true);
     try {
-      const res = await api.get(`/teacher/sections/${allocation._id}/students`);
-      setStudents(res.data || []);
+      // Load session QR code
+      const qrRes = await api.get(`/teacher/attendance/session-qr/${allocation._id}`);
+      setSessionQrCode(qrRes.data.qrImage);
+      
+      // Load students
+      const studentsRes = await api.get(`/teacher/sections/${allocation._id}/students`);
+      setStudents(studentsRes.data || []);
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to load students');
+      setError(err.response?.data?.message || 'Failed to load allocation data');
     } finally {
       setLoading(false);
     }
@@ -142,6 +151,23 @@ function TeacherAttendancePage() {
               {scanMessage && (
                 <div className="mb-3 text-xs text-emerald-300 bg-emerald-500/10 border border-emerald-500/20 rounded px-2 py-1">
                   {scanMessage}
+                </div>
+              )}
+
+              {/* Session QR Code Display */}
+              {sessionQrCode && (
+                <div className="mb-4 p-4 bg-slate-800/50 rounded-lg border border-cyan-500/20">
+                  <h4 className="text-sm font-medium text-cyan-300 mb-2">Session QR Code</h4>
+                  <p className="text-xs text-slate-400 mb-3">
+                    Display this QR code on your screen/projector. Students scan it to mark attendance.
+                  </p>
+                  <div className="flex justify-center">
+                    <QRDisplay
+                      qrImage={sessionQrCode}
+                      title="Attendance Session"
+                      subtitle="Scan to mark your attendance"
+                    />
+                  </div>
                 </div>
               )}
 

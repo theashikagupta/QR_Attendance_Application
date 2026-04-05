@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import api from '../../api/client';
+import QRDisplay from '../../components/QRDisplay';
 
 const EMPTY_FORM = {
   name: '',
@@ -25,6 +26,7 @@ function AdminStudentsPage() {
   });
   const [form, setForm] = useState(EMPTY_FORM);
   const [editingId, setEditingId] = useState(null);
+  const [qrModal, setQrModal] = useState({ show: false, student: null });
 
   const loadStudents = async () => {
     setLoading(true);
@@ -120,6 +122,14 @@ function AdminStudentsPage() {
     return map[status] || 'bg-slate-500/15 text-slate-300';
   };
 
+  const showQrModal = (student) => {
+    setQrModal({ show: true, student });
+  };
+
+  const hideQrModal = () => {
+    setQrModal({ show: false, student: null });
+  };
+
   return (
     <div className="space-y-6 text-slate-100">
       <h2 className="text-xl font-semibold">Student Management</h2>
@@ -195,7 +205,7 @@ function AdminStudentsPage() {
                 <th className="px-2 py-2 text-left">Admission No</th>
                 <th className="px-2 py-2 text-left">Dept / Sec / Sem</th>
                 <th className="px-2 py-2 text-left">Status</th>
-                <th className="px-2 py-2 text-left">QR</th>
+                <th className="px-2 py-2 text-left">QR Code</th>
                 <th className="px-2 py-2 text-right">Actions</th>
               </tr>
             </thead>
@@ -216,10 +226,15 @@ function AdminStudentsPage() {
                     </span>
                   </td>
                   <td className="px-2 py-1">
-                    {s.qrPayload ? (
-                      <span className="text-emerald-400">Generated</span>
+                    {s.qrImageUrl ? (
+                      <button
+                        onClick={() => showQrModal(s)}
+                        className="px-2 py-0.5 rounded bg-cyan-600 hover:bg-cyan-700 text-xs font-medium text-white"
+                      >
+                        View QR
+                      </button>
                     ) : (
-                      <span className="text-slate-400">Pending</span>
+                      <span className="text-slate-400 text-xs">No QR</span>
                     )}
                   </td>
                   <td className="px-2 py-1 text-right space-x-1">
@@ -313,6 +328,36 @@ function AdminStudentsPage() {
           </form>
         </div>
       </div>
+
+      {/* QR Modal */}
+      {qrModal.show && qrModal.student && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-slate-900 border border-white/10 rounded-xl p-6 max-w-md w-full mx-4">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-medium text-slate-100">
+                {qrModal.student.name}'s QR Code
+              </h3>
+              <button
+                onClick={hideQrModal}
+                className="text-slate-400 hover:text-slate-200 text-xl"
+              >
+                ×
+              </button>
+            </div>
+
+            <QRDisplay
+              qrImage={qrModal.student.qrImageUrl}
+              title={`${qrModal.student.name}`}
+              subtitle={`Admission: ${qrModal.student.admissionNumber}`}
+            />
+
+            <div className="mt-4 text-xs text-slate-400">
+              <p>Student ID: {qrModal.student._id}</p>
+              <p>Status: {qrModal.student.status}</p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

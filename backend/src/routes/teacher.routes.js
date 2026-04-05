@@ -7,6 +7,7 @@ const { SectionAllocation } = require('../models/SectionAllocation');
 const { Student } = require('../models/Student');
 const { Attendance, ATTENDANCE_STATUS } = require('../models/Attendance');
 const { ContactRequest, ISSUE_TYPES } = require('../models/ContactRequest');
+const { generateQRCodeBuffer } = require('../utils/qr');
 
 const router = express.Router();
 
@@ -200,6 +201,40 @@ router.post('/attendance/scan', async (req, res, next) => {
       code: isLate ? 'LATE' : 'PRESENT',
       message: isLate ? 'Marked as late' : 'Attendance marked',
       attendance,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Generate session QR code for attendance
+router.get('/attendance/session-qr/:allocationId', async (req, res, next) => {
+  try {
+    const teacher = await Teacher.findOne({ user: req.user._id });
+    if (!teacher) return res.status(404).json({ message: 'Teacher profile not found' });
+
+    const allocation = await SectionAllocation.findById(req.params.allocationId).lean();
+    if (!allocation) return res.status(404).json({ message: 'Allocation not found' });
+    if (String(allocation.teacher) !== String(teacher._id)) {
+      return res.status(403).json({ message: 'Allocation does not belong to this teacher' });
+    }
+
+    // Generate session payload with timestamp for uniqueness
+    const sessionPayload = `SESSION::${allocation._id}::${Date.now()}`;
+    const qrBuffer = await generateQRCodeBuffer(sessionPayload);
+
+    // Convert buffer to base64 data URL
+    const base64Image = qrBuffer.toString('base64');
+    const dataUrl = `data:image/png;base64,${base64Image}`;
+
+    res.json({
+      qrImage: dataUrl,
+      payload: sessionPayload,
+      allocation: {
+        subject: allocation.subject,
+        department: allocation.department,
+        section: allocation.section,
+      },
     });
   } catch (err) {
     next(err);

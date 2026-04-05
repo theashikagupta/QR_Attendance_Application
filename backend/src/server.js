@@ -39,7 +39,7 @@ app.use((err, req, res, next) => {
   });
 });
 
-const PORT = process.env.PORT || 9000;
+const PORT = process.env.PORT || 9001;
 app.listen(PORT, () => {
   console.log(`Backend server running on port ${PORT}`);
 });

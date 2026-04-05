@@ -11,6 +11,7 @@ const axios = require('axios');
 const { ContactRequest } = require('../models/ContactRequest');
 const { sendTeacherCredentialsEmail, sendStudentStatusEmail } = require('../utils/email');
 const { buildAttendanceSummary, buildDefaultersList } = require('../utils/reports');
+const { generateStudentQRCode } = require('../utils/qr');
 
 const router = express.Router();
 
@@ -36,7 +37,7 @@ router.post(
         return res.status(400).json({ errors: errors.array() });
       }
 
-      // qrSecret will be used by the Python service to generate encrypted QR
+      // qrSecret will be used to generate encrypted QR code
       const qrSecret = `stu_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
       let student = await Student.create({
@@ -45,21 +46,15 @@ router.post(
         qrSecret,
       });
 
-      // Call Flask service to generate encrypted QR payload (and optionally image)
-      const qrBaseUrl = process.env.QR_SERVICE_BASE_URL;
-      if (qrBaseUrl) {
-        try {
-          const qrRes = await axios.post(`${qrBaseUrl}/api/qr/generate`, {
-            studentId: student._id,
-            qrSecret: student.qrSecret,
-          });
-          const { payload, imageUrl } = qrRes.data || {};
-          student.qrPayload = payload;
-          if (imageUrl) student.qrImageUrl = imageUrl;
-          await student.save();
-        } catch (qrErr) {
-          console.error('QR generation failed', qrErr.message || qrErr);
-        }
+      // Generate QR code directly using qrcode library
+      try {
+        const { payload, imageDataUrl } = await generateStudentQRCode(student._id.toString(), student.qrSecret);
+        student.qrPayload = payload;
+        student.qrImageUrl = imageDataUrl; // Base64 encoded PNG image
+        await student.save();
+      } catch (qrErr) {
+        console.error('QR generation failed', qrErr.message || qrErr);
+        // Continue without QR - not critical
       }
 
       res.status(201).json(student);
