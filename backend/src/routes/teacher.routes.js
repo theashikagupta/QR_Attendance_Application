@@ -124,7 +124,7 @@ router.post('/attendance/scan', async (req, res, next) => {
         }
         studentId = validateRes.data.studentId;
         qrSecret = validateRes.data.qrSecret;
-      } const mongoose = require('mongoose');
+      } 
 
 const connect = async () => {
   const uri = process.env.MONGODB_URI;
