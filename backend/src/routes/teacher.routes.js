@@ -124,10 +124,26 @@ router.post('/attendance/scan', async (req, res, next) => {
         }
         studentId = validateRes.data.studentId;
         qrSecret = validateRes.data.qrSecret;
-      } catch (err) {
-        console.error('QR validation failed', err.message || err);
-        return res.status(400).json({ code: 'INVALID_QR', message: 'Could not validate QR' });
-      }
+      } const mongoose = require('mongoose');
+
+const connect = async () => {
+  const uri = process.env.MONGODB_URI;
+
+  if (!uri) {
+    console.error('MONGODB_URI is not defined');
+    process.exit(1);
+  }
+
+  try {
+    await mongoose.connect(uri);
+    console.log('Connected to MongoDB');
+  } catch (err) {
+    console.error('MongoDB connection error:', err.message);
+    process.exit(1);
+  }
+};
+
+module.exports = { connect };
     } else {
       // Fallback: parse placeholder ENC::<studentId>::<qrSecret>
       if (!payload.startsWith('ENC::')) {

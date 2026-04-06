@@ -1,7 +1,6 @@
 import os
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify
 from app.routes.qr_routes import qr_bp
-
 
 def create_app():
     app = Flask(__name__)
@@ -12,13 +11,12 @@ def create_app():
     def health():
         return jsonify({"status": "ok", "service": "qr-service"})
 
-    # Register blueprints
     app.register_blueprint(qr_bp, url_prefix="/api/qr")
 
     return app
 
+app = create_app()
 
 if __name__ == "__main__":
-    app = create_app()
-    app.run(host="0.0.0.0", port=7000, debug=True)
-
+    port = int(os.environ.get("PORT", 7000))
+    app.run(host="0.0.0.0", port=port, debug=False)
