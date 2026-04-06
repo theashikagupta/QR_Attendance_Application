@@ -119,40 +119,31 @@ router.post('/attendance/scan', async (req, res, next) => {
           allocationId,
           timestamp: now.toISOString(),
         });
+
         if (!validateRes.data?.valid) {
           return res.status(400).json({ code: 'INVALID_QR', message: 'Invalid QR payload' });
         }
+
         studentId = validateRes.data.studentId;
         qrSecret = validateRes.data.qrSecret;
-      } 
-
-const connect = async () => {
-  const uri = process.env.MONGODB_URI;
-
-  if (!uri) {
-    console.error('MONGODB_URI is not defined');
-    process.exit(1);
-  }
-
-  try {
-    await mongoose.connect(uri);
-    console.log('Connected to MongoDB');
-  } catch (err) {
-    console.error('MongoDB connection error:', err.message);
-    process.exit(1);
-  }
-};
-
-module.exports = { connect };
+      } catch (err) {
+        console.error('QR validation failed:', err.response?.data || err.message || err);
+        return res.status(502).json({
+          code: 'QR_SERVICE_ERROR',
+          message: 'QR service is unavailable or validation failed',
+        });
+      }
     } else {
       // Fallback: parse placeholder ENC::<studentId>::<qrSecret>
       if (!payload.startsWith('ENC::')) {
         return res.status(400).json({ code: 'INVALID_QR', message: 'Invalid QR payload' });
       }
+
       const parts = payload.split('::');
       if (parts.length !== 3) {
         return res.status(400).json({ code: 'INVALID_QR', message: 'Malformed QR payload' });
       }
+
       [, studentId, qrSecret] = parts;
     }
 
@@ -161,7 +152,6 @@ module.exports = { connect };
       return res.status(404).json({ code: 'NOT_FOUND', message: 'Student not found for QR' });
     }
 
-    // Status checks
     if (student.status === 'INACTIVE' || student.status === 'DEBARRED') {
       return res.status(400).json({
         code: 'BLOCKED',
@@ -169,7 +159,6 @@ module.exports = { connect };
       });
     }
 
-    // Visibility rule: department & section must match allocation
     if (
       student.department !== allocation.department ||
       student.section !== allocation.section
@@ -180,7 +169,6 @@ module.exports = { connect };
       });
     }
 
-    // Duplicate and per-day rule
     const attendanceDate = new Date(now);
     attendanceDate.setHours(0, 0, 0, 0);
 
@@ -199,7 +187,6 @@ module.exports = { connect };
       });
     }
 
-    // Late if more than 10 minutes after start time
     const tenMinutesMs = 10 * 60 * 1000;
     const isLate = now - start > tenMinutesMs;
 
@@ -235,11 +222,9 @@ router.get('/attendance/session-qr/:allocationId', async (req, res, next) => {
       return res.status(403).json({ message: 'Allocation does not belong to this teacher' });
     }
 
-    // Generate session payload with timestamp for uniqueness
     const sessionPayload = `SESSION::${allocation._id}::${Date.now()}`;
     const qrBuffer = await generateQRCodeBuffer(sessionPayload);
 
-    // Convert buffer to base64 data URL
     const base64Image = qrBuffer.toString('base64');
     const dataUrl = `data:image/png;base64,${base64Image}`;
 
