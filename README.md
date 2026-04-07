@@ -617,4 +617,6 @@ qr-service/
 
 Built by **Ashika Gupta** as a practical full-stack project focused on solving a real college workflow with QR-based attendance automation.
 
+## License
 
+This project is licensed under the MIT License.
